@@ -128,19 +128,9 @@ class Smash:
         """Returns the master revison"""
         return run_command(f"git rev-list {self.base_branch_name} --max-count 1")
 
-    def replay(self):
-        on_base = self.base_rev == self.master_rev
-        if not on_base:
-            # TODO: rebase on base branch based on optional arg
-            self.logger.warning(f"this branch is not on top of {self.base_branch_name}")
-
-        self.logger.info("find merge commits:")
-
-        commits = self.get_merges()
-
-        branch_manager = git.get_branch_manager()
-        current_branch = branch_manager.get_current_branch()
-
+    def _get_branches_to_merge(self, branch_manager: git.BranchManager=None,
+            current_branch: git.Branch=None, commits: List=None) -> List[tuple]:
+        """Get branches to merge back into in."""
         branches_to_merge = []
 
         for commit in commits:
@@ -166,6 +156,23 @@ class Smash:
 
             branches_to_merge.append((commit, branches[0]))
 
+        return branches_to_merge
+
+    def replay(self):
+        on_base = self.base_rev == self.master_rev
+        if not on_base:
+            # TODO: rebase on base branch based on optional arg
+            self.logger.warning(f"this branch is not on top of {self.base_branch_name}")
+
+        self.logger.info("find merge commits:")
+
+        commits = self.get_merges()
+
+        branch_manager = git.get_branch_manager()
+        current_branch = branch_manager.get_current_branch()
+
+        branches_to_merge = self._get_branches_to_merge(branch_manager=branch_manager,
+                current_branch=current_branch, commits=commits)
         # apply the branches backwards
         branches_to_merge.reverse()
 
